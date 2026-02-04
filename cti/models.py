@@ -38,6 +38,8 @@ class OptionsConfig:
     state_file: str = "data/state_last_ids.json"
     keywords: List[str] = field(default_factory=list)
     allowed_senders: List[int] = field(default_factory=list)
+    admin_chat_ids: List[int] = field(default_factory=list)
+    admin_senders: List[int] = field(default_factory=list)
     max_send_retries: int = 3
     retry_base_seconds: float = 1.5
 
@@ -71,3 +73,5 @@ class RuntimeState:
     album_tasks: Dict[str, Dict[int, asyncio.Task]] = field(default_factory=dict)
     active_handler_fn: Optional[Any] = None
     active_handler_event: Optional[Any] = None
+    active_admin_handler_fn: Optional[Any] = None
+    active_admin_handler_event: Optional[Any] = None

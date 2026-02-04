@@ -5,7 +5,7 @@ from typing import Any, Dict, List
 from telethon import events, utils
 
 from .backfill import backfill_missing_state
-from .handler import on_new_message
+from .handler import on_admin_message, on_new_message
 from .models import AppConfig, ResolvedDest
 from .state import app, get_client, load_json, load_state
 from .telegram import resolve_entity_with_fallback, resolve_target
@@ -91,10 +91,50 @@ async def apply_config(cfg: AppConfig) -> None:
             client.remove_event_handler(app.active_handler_fn, app.active_handler_event)
         except Exception:
             pass
+    if app.active_admin_handler_fn and app.active_admin_handler_event:
+        try:
+            client.remove_event_handler(app.active_admin_handler_fn, app.active_admin_handler_event)
+        except Exception:
+            pass
+
+    watch_chats = list(resolved_sources)
+    if watch_chats:
+        unique_map: Dict[int, Any] = {}
+        for ent in watch_chats:
+            try:
+                key = utils.get_peer_id(ent)
+            except Exception:
+                key = None
+            if key is None:
+                continue
+            unique_map[key] = ent
+        watch_chats = list(unique_map.values())
 
     app.active_handler_fn = on_new_message
-    app.active_handler_event = events.NewMessage(chats=resolved_sources)
+    app.active_handler_event = events.NewMessage(chats=watch_chats)
     client.add_event_handler(app.active_handler_fn, app.active_handler_event)
+
+    if options.admin_chat_ids:
+        admin_entities = []
+        for chat_id in options.admin_chat_ids:
+            try:
+                admin_ent = await resolve_entity_with_fallback(chat_id)
+                admin_entities.append(admin_ent)
+            except Exception as e:
+                print(f"[WARN] Cannot resolve admin_chat_id={chat_id}: {e}")
+
+        if admin_entities:
+            app.active_admin_handler_fn = on_admin_message
+            app.active_admin_handler_event = events.NewMessage(chats=admin_entities)
+            client.add_event_handler(app.active_admin_handler_fn, app.active_admin_handler_event)
+        else:
+            app.active_admin_handler_fn = None
+            app.active_admin_handler_event = None
+    else:
+        app.active_admin_handler_fn = None
+        app.active_admin_handler_event = None
+        if options.admin_senders:
+            print("[WARN] admin_senders is set but admin_chat_ids is empty; admin commands are disabled.")
 
     print("====================================")
     print("[OK] Config applied")
@@ -111,6 +151,8 @@ async def apply_config(cfg: AppConfig) -> None:
     print(f"reload_interval_s : {options.reload_interval_seconds}")
     print(f"keywords          : {options.keywords}")
     print(f"allowed_senders   : {options.allowed_senders}")
+    print(f"admin_chat_ids    : {options.admin_chat_ids}")
+    print(f"admin_senders     : {options.admin_senders}")
     print(f"max_send_retries  : {options.max_send_retries}")
     print(f"retry_base_sec    : {options.retry_base_seconds}")
     print("====================================")

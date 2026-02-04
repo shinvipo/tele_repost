@@ -4,6 +4,7 @@ from .models import AppConfig, MonitorConfig, OptionsConfig, RouteConfig, Telegr
 from .normalize import (
     normalize_keywords,
     normalize_sender_ids,
+    parse_chat_ids,
     parse_target,
     parse_topic_id,
 )
@@ -89,6 +90,10 @@ def parse_config(cfg: Dict[str, Any]) -> AppConfig:
         state_file=str(opts.get("state_file", "data/state_last_ids.json")),
         keywords=normalize_keywords(opts.get("keywords", [])),
         allowed_senders=normalize_sender_ids(opts.get("allowed_senders", [])),
+        admin_chat_ids=parse_chat_ids(
+            opts.get("admin_chat_ids", opts.get("admin_chat_id"))
+        ),
+        admin_senders=normalize_sender_ids(opts.get("admin_senders", [])),
         max_send_retries=int(opts.get("max_send_retries", 3)),
         retry_base_seconds=float(opts.get("retry_base_seconds", 1.5)),
     )

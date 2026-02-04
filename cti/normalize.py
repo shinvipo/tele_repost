@@ -41,6 +41,39 @@ def parse_topic_id(raw: Any) -> Optional[int]:
     raise ValueError("topic_id must be a positive integer")
 
 
+def parse_chat_ids(raw: Any) -> List[int]:
+    if raw is None:
+        return []
+    if isinstance(raw, (int, str)):
+        raw_list = [raw]
+    elif isinstance(raw, list):
+        raw_list = raw
+    else:
+        return []
+
+    out: List[int] = []
+    for item in raw_list:
+        s = str(item).strip()
+        if not s:
+            continue
+        if s.lstrip("-").isdigit():
+            v = int(s)
+            if str(v).startswith("-100"):
+                v = normalize_channel_id(v)
+            out.append(v)
+        else:
+            raise ValueError("admin_chat_ids must be numeric ids")
+
+    seen = set()
+    uniq: List[int] = []
+    for v in out:
+        if v in seen:
+            continue
+        seen.add(v)
+        uniq.append(v)
+    return uniq
+
+
 def normalize_keywords(raw: Any) -> List[str]:
     if not raw:
         return []

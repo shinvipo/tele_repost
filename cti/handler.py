@@ -50,3 +50,9 @@ async def on_new_message(event):
         await asyncio.sleep(e.seconds + 1)
     except Exception as e:
         print(f"[ERR] chat_id={event.chat_id} msg_id={msg.id} -> {e}")
+
+
+async def on_admin_message(event):
+    from .admin import handle_admin_command
+
+    await handle_admin_command(event)
