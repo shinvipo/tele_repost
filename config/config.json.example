@@ -1,0 +1,27 @@
+{
+  "telegram": {
+    "api_id": 27123456,
+    "api_hash": "API_HASH",
+    "session": "RENAME_THIS"
+  },
+  "monitor": {
+    "routes": [
+      {
+        "source": "channel_link_or_id",
+        "dest": "<Destination_ID>",
+        "topic_id": 1234,
+        "allowed_senders": [777000]
+      }
+    ]
+  },
+  "options": {
+    "download_media": true,
+    "album_wait_seconds": 1.2,
+    "progress_log": true,
+    "keywords": [],
+    "max_send_retries": 3,
+    "retry_base_seconds": 1.5,
+    "state_file": "data/state_last_ids.json",
+    "reload_interval_seconds": 2
+  }
+}

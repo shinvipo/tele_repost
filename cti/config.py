@@ -1,0 +1,96 @@
+from typing import Any, Dict, List
+
+from .models import AppConfig, MonitorConfig, OptionsConfig, RouteConfig, TelegramConfig
+from .normalize import (
+    normalize_keywords,
+    normalize_sender_ids,
+    parse_target,
+    parse_topic_id,
+)
+
+
+def validate_config(cfg: Dict[str, Any]) -> None:
+    if "telegram" not in cfg:
+        raise ValueError("Missing 'telegram' section")
+    if "monitor" not in cfg:
+        raise ValueError("Missing 'monitor' section")
+    if "api_id" not in cfg["telegram"] or "api_hash" not in cfg["telegram"]:
+        raise ValueError("Missing telegram.api_id or telegram.api_hash")
+
+    monitor = cfg.get("monitor", {})
+    routes = monitor.get("routes", None)
+    if routes is not None:
+        if not isinstance(routes, list) or not routes:
+            raise ValueError("monitor.routes must be a non-empty array")
+        for i, r in enumerate(routes):
+            if not isinstance(r, dict):
+                raise ValueError(f"monitor.routes[{i}] must be an object")
+            if "source" not in r or "dest" not in r:
+                raise ValueError(f"monitor.routes[{i}] must have 'source' and 'dest'")
+        return
+
+    sources = monitor.get("sources", [])
+    dests = monitor.get("dests", [])
+    if not isinstance(sources, list) or not sources:
+        raise ValueError("monitor.sources must be a non-empty array")
+    if not isinstance(dests, list) or not dests:
+        raise ValueError("monitor.dests must be a non-empty array")
+
+
+def parse_config(cfg: Dict[str, Any]) -> AppConfig:
+    validate_config(cfg)
+
+    tg = cfg["telegram"]
+    telegram = TelegramConfig(
+        api_id=int(tg["api_id"]),
+        api_hash=str(tg["api_hash"]),
+        session=str(tg.get("session", "monitor_session")),
+    )
+
+    monitor_raw = cfg["monitor"]
+    routes_raw = monitor_raw.get("routes", None)
+
+    routes: List[RouteConfig] = []
+    if routes_raw is not None:
+        for r in routes_raw:
+            source = parse_target(r.get("source"))
+            dest = parse_target(r.get("dest"))
+            topic_id = parse_topic_id(r.get("topic_id"))
+            allowed = normalize_sender_ids(r.get("allowed_senders", []))
+            routes.append(
+                RouteConfig(
+                    source=source,
+                    dest=dest,
+                    topic_id=topic_id,
+                    allowed_senders=allowed,
+                )
+            )
+        sources = [r.source for r in routes]
+        dests = [r.dest for r in routes]
+    else:
+        sources_raw = monitor_raw["sources"]
+        dests_raw = monitor_raw["dests"]
+        sources = [parse_target(x) for x in sources_raw]
+        dests = [parse_target(x) for x in dests_raw]
+        routes = [RouteConfig(source=s, dest=d, topic_id=None) for s in sources for d in dests]
+
+    monitor = MonitorConfig(
+        sources=sources,
+        dests=dests,
+        routes=routes,
+    )
+
+    opts = cfg.get("options", {})
+    options = OptionsConfig(
+        download_media=bool(opts.get("download_media", True)),
+        album_wait_seconds=float(opts.get("album_wait_seconds", 1.2)),
+        progress_log=bool(opts.get("progress_log", True)),
+        reload_interval_seconds=float(opts.get("reload_interval_seconds", 2)),
+        state_file=str(opts.get("state_file", "data/state_last_ids.json")),
+        keywords=normalize_keywords(opts.get("keywords", [])),
+        allowed_senders=normalize_sender_ids(opts.get("allowed_senders", [])),
+        max_send_retries=int(opts.get("max_send_retries", 3)),
+        retry_base_seconds=float(opts.get("retry_base_seconds", 1.5)),
+    )
+
+    return AppConfig(telegram=telegram, monitor=monitor, options=options)
