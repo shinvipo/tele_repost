@@ -21,6 +21,7 @@
     "keywords": [],
     "admin_chat_ids": [],
     "admin_senders": [],
+    "catchup_min_offline_minutes": null,
     "max_send_retries": 3,
     "retry_base_seconds": 1.5,
     "state_file": "data/state_last_ids.json",

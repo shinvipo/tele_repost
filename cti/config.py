@@ -3,6 +3,7 @@ from typing import Any, Dict, List
 from .models import AppConfig, MonitorConfig, OptionsConfig, RouteConfig, TelegramConfig
 from .normalize import (
     normalize_keywords,
+    normalize_optional_int,
     normalize_sender_ids,
     parse_chat_ids,
     parse_target,
@@ -94,6 +95,9 @@ def parse_config(cfg: Dict[str, Any]) -> AppConfig:
             opts.get("admin_chat_ids", opts.get("admin_chat_id"))
         ),
         admin_senders=normalize_sender_ids(opts.get("admin_senders", [])),
+        catchup_min_offline_minutes=normalize_optional_int(
+            opts.get("catchup_min_offline_minutes")
+        ),
         max_send_retries=int(opts.get("max_send_retries", 3)),
         retry_base_seconds=float(opts.get("retry_base_seconds", 1.5)),
     )

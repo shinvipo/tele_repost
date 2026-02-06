@@ -4,7 +4,7 @@ from typing import Any, Dict, List
 
 from telethon import events, utils
 
-from .backfill import backfill_missing_state
+from .backfill import backfill_missing_state, catch_up_from_state
 from .handler import on_admin_message, on_new_message
 from .models import AppConfig, ResolvedDest
 from .state import app, get_client, load_json, load_state
@@ -153,11 +153,13 @@ async def apply_config(cfg: AppConfig) -> None:
     print(f"allowed_senders   : {options.allowed_senders}")
     print(f"admin_chat_ids    : {options.admin_chat_ids}")
     print(f"admin_senders     : {options.admin_senders}")
+    print(f"catchup_min_offline_minutes : {options.catchup_min_offline_minutes}")
     print(f"max_send_retries  : {options.max_send_retries}")
     print(f"retry_base_sec    : {options.retry_base_seconds}")
     print("====================================")
 
     await backfill_missing_state()
+    await catch_up_from_state()
 
 
 async def watch_config(config_path: str, parse_config_fn, apply_config_fn) -> None:

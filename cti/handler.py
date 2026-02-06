@@ -18,14 +18,14 @@ async def on_new_message(event):
 
     dests = get_route_dests(event.chat_id)
     if not dests:
-        update_last_id(chat_id_key, msg.id)
+        await update_last_id(chat_id_key, msg.id)
         if app.options.progress_log:
             print(f"[SKIP] chat_id={event.chat_id} msg_id={msg.id} (no route)")
         return
 
     filtered_dests = filter_dests_for_message(msg, dests)
     if not filtered_dests:
-        update_last_id(chat_id_key, msg.id)
+        await update_last_id(chat_id_key, msg.id)
         if app.options.progress_log:
             print(f"[SKIP] chat_id={event.chat_id} msg_id={msg.id} (sender filter)")
         return
@@ -35,7 +35,7 @@ async def on_new_message(event):
     try:
         await repost_message(event.chat_id, msg, filtered_dests, matched)
 
-        update_last_id(chat_id_key, msg.id)
+        await update_last_id(chat_id_key, msg.id)
 
         if app.options.progress_log:
             if matched:

@@ -121,3 +121,16 @@ def normalize_sender_ids(raw: Any) -> List[int]:
         seen.add(v)
         uniq.append(v)
     return uniq
+
+
+def normalize_optional_int(raw: Any) -> Optional[int]:
+    if raw is None:
+        return None
+    if isinstance(raw, (int, float)):
+        return int(raw)
+    s = str(raw).strip()
+    if not s:
+        return None
+    if s.lstrip("-").isdigit():
+        return int(s)
+    raise ValueError("catchup_min_offline_minutes must be a number")

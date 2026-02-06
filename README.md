@@ -16,7 +16,7 @@
 
 - ✅ **Chuyển tiếp tin nhắn** tự động giữa các kênh/nhóm Telegram
 - 🔍 **Lọc nội dung** theo từ khóa (keywords)
-- 🎯 **Định tuyến thông minh** với nhiều route cùng lúc
+- 🎯 **Định tuyến** với nhiều route cùng lúc
 - 👥 **Kiểm soát người gửi** với whitelist allowed_senders
 - 📸 **Hỗ trợ media** (ảnh, video, file, album)
 - 💬 **Topics support** cho Telegram Forum groups
@@ -29,33 +29,39 @@
 
 ```
 CTI/
-├── 📦 cti/                    # Package chính
+├── cti/                    # Package chinh
 │   ├── __init__.py
-│   ├── __main__.py           
-│   ├── admin.py              # Admin commands handler
-│   ├── apply.py              # Apply config và watch changes
-│   ├── backfill.py           # Backfill tin nhắn cũ
-│   ├── config.py             # Parse và validate config
-│   ├── constants.py          # Các hằng số
-│   ├── filters.py            # Logic lọc tin nhắn
-│   ├── handler.py            # Handler chuyển tiếp tin nhắn
-│   ├── main.py               # Main entry point
-│   ├── models.py             # Data models (dataclasses)
-│   ├── normalize.py          # Normalize dữ liệu input
-│   ├── repost.py             # Logic repost tin nhắn
-│   ├── routing.py            # Quản lý routes
-│   ├── state.py              # State management
-│   └── telegram.py           # Telegram client utils
-├── 📊 data/                   # Dữ liệu runtime
-│   ├── dump_session.session  # Telegram session
-│   ├── state_last_ids.json   # Lưu ID tin nhắn cuối
-│   └── .gitkeep
-├── ⚙️ config/                 # Cấu hình
-│   ├── config.json           # Config thực tế
-│   └── config.json.example   # Config mẫu
-├── main.py                   # Entry point chính
-├── requirements.txt          # Python dependencies
-└── README.md                 # Tài liệu này
+│   ├── __main__.py
+│   ├── admin.py            # Admin commands handler
+│   ├── apply.py            # Apply config va watch changes
+│   ├── backfill.py         # Backfill + catch-up
+│   ├── config.py           # Parse va validate config
+│   ├── connection.py       # Reconnect watcher
+│   ├── constants.py        # Hang so
+│   ├── filters.py          # Keyword/sender filters
+│   ├── handler.py          # New message handler
+│   ├── main.py             # Main entry point
+│   ├── models.py           # Data models (dataclasses)
+│   ├── normalize.py        # Normalize input
+│   ├── repost.py           # Repost logic
+│   ├── routing.py          # Route helpers
+│   ├── state.py            # State management
+│   └── telegram.py         # Telegram client utils
+├── config/                 # Configuration files
+│   ├── config.json
+│   └── config.json.example
+├── data/                   # Runtime data (session, state, exports)
+│   ├── .gitkeep
+│   ├── dump.csv
+│   ├── dump.json
+│   ├── dump_session.session
+│   └── state_last_ids.json
+├── backups/
+├── tests/
+│   └── test.py
+├── main.py
+├── requirements.txt
+└── README.md
 ```
 
 ## 🚀 Cài đặt
