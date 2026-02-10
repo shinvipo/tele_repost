@@ -47,10 +47,24 @@ class OptionsConfig:
 
 
 @dataclass
+class CveMonitorConfig:
+    enabled: bool = False
+    interval_seconds: int = 300
+    dest: Union[str, int] = 0
+    topic_id: Optional[int] = None
+    keywords: List[str] = field(default_factory=list)
+    include_updates: bool = True
+    kev_enabled: bool = True
+    kev_cache_file: str = "data/cve_kev_cache.json"
+    kev_cache_ttl_hours: int = 24
+
+
+@dataclass
 class AppConfig:
     telegram: TelegramConfig
     monitor: MonitorConfig
     options: OptionsConfig
+    cve_monitor: Optional[CveMonitorConfig] = None
 
 
 @dataclass
@@ -69,6 +83,7 @@ class RuntimeState:
     source_entities: Dict[str, Any] = field(default_factory=dict)
     source_name_map: Dict[str, str] = field(default_factory=dict)
     state: Dict[str, int] = field(default_factory=dict)
+    cve_state: Dict[str, Any] = field(default_factory=lambda: {"last_fetch_time": None, "processed_cves": []})
     options: OptionsConfig = field(default_factory=OptionsConfig)
     album_buffer: Dict[str, Dict[int, List[Any]]] = field(default_factory=dict)
     album_match: Dict[str, Dict[int, bool]] = field(default_factory=dict)

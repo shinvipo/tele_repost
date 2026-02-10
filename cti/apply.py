@@ -7,7 +7,7 @@ from telethon import events, utils
 from .backfill import backfill_missing_state, catch_up_from_state
 from .handler import on_admin_message, on_new_message
 from .models import AppConfig, ResolvedDest
-from .state import app, get_client, load_json, load_state
+from .state import app, get_client, load_cve_state, load_json, load_state
 from .telegram import resolve_entity_with_fallback, resolve_target
 
 
@@ -36,6 +36,8 @@ async def apply_config(cfg: AppConfig) -> None:
     loaded = load_state(options.state_file)
     for k, v in loaded.items():
         app.state.setdefault(k, v)
+
+    app.cve_state = load_cve_state(options.state_file)
 
     routes = cfg.monitor.routes
 

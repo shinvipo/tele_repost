@@ -1,6 +1,6 @@
 from typing import Any, Dict, List
 
-from .models import AppConfig, MonitorConfig, OptionsConfig, RouteConfig, TelegramConfig
+from .models import AppConfig, CveMonitorConfig, MonitorConfig, OptionsConfig, RouteConfig, TelegramConfig
 from .normalize import (
     normalize_keywords,
     normalize_non_negative_int,
@@ -106,4 +106,19 @@ def parse_config(cfg: Dict[str, Any]) -> AppConfig:
         retry_base_seconds=float(opts.get("retry_base_seconds", 1.5)),
     )
 
-    return AppConfig(telegram=telegram, monitor=monitor, options=options)
+    cve_monitor = None
+    cve_raw = cfg.get("cve_monitor", {})
+    if cve_raw and cve_raw.get("enabled", False):
+        cve_monitor = CveMonitorConfig(
+            enabled=True,
+            interval_seconds=int(cve_raw.get("interval_seconds", 300)),
+            dest=parse_target(cve_raw["dest"]),
+            topic_id=parse_topic_id(cve_raw.get("topic_id")),
+            keywords=normalize_keywords(cve_raw.get("keywords", [])),
+            include_updates=bool(cve_raw.get("include_updates", True)),
+            kev_enabled=bool(cve_raw.get("kev_enabled", True)),
+            kev_cache_file=str(cve_raw.get("kev_cache_file", "data/cve_kev_cache.json")),
+            kev_cache_ttl_hours=int(cve_raw.get("kev_cache_ttl_hours", 24)),
+        )
+
+    return AppConfig(telegram=telegram, monitor=monitor, options=options, cve_monitor=cve_monitor)
