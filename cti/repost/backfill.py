@@ -1,13 +1,14 @@
+"""Backfill and catch-up logic — fill gaps in message history."""
+
 import asyncio
 from typing import Any, List, Optional
 
-from telethon import utils
-
-from .constants import BACKFILL_LIMIT
+from ..core.constants import BACKFILL_LIMIT
+from ..infra.client import get_peer_id
+from ..state import app, get_client, update_last_id
 from .filters import should_repost_message
-from .repost import repost_message
 from .routing import filter_dests_for_message
-from .state import app, get_client, update_last_id
+from .service import repost_message
 
 
 async def collect_recent_messages(entity, limit: int) -> List[Any]:
@@ -40,7 +41,7 @@ async def backfill_missing_state() -> None:
         print(f"[BACKFILL] source={name} id={src_key} limit={BACKFILL_LIMIT}")
 
         sent = 0
-        chat_id = utils.get_peer_id(src_ent)
+        chat_id = get_peer_id(src_ent)
 
         recent_msgs = await collect_recent_messages(src_ent, BACKFILL_LIMIT)
         seen = len(recent_msgs)
@@ -94,7 +95,7 @@ async def catch_up_source_from_state(
         reason_suffix = f" reason={reason}" if reason else ""
         print(f"[CATCHUP] source={name} id={src_key} from_id={last_id}{reason_suffix}")
         try:
-            chat_id = utils.get_peer_id(source_ent)
+            chat_id = get_peer_id(source_ent)
             max_id = last_id
             seen = 0
             sent = 0

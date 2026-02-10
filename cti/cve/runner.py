@@ -7,9 +7,9 @@ optionally filters by keywords, and sends formatted alerts to a dedicated topic/
 
 import asyncio
 
-from ..models import CveMonitorConfig
+from ..core.models import CveMonitorConfig
+from ..infra.client import build_reply_to, resolve_target, send_with_retry
 from ..state import app, update_cve_state
-from ..telegram import resolve_target, send_with_retry, build_reply_to
 from .formatter import TelegramFormatter
 from .kev import KEVLookup
 from .monitor import DeltaMonitor

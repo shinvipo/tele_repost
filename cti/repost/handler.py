@@ -1,13 +1,14 @@
-import asyncio
+"""Repost message handler — thin event handler, delegates to service.
 
-from telethon.errors import FloodWaitError
+Handler only: receives event → extracts data → calls service → updates state.
+"""
 
+from ..core.normalize import normalize_channel_id
+from ..state import app, update_last_id
 from .backfill import catch_up_source_from_state
 from .filters import should_repost_message
-from .normalize import normalize_channel_id
-from .repost import repost_message
 from .routing import filter_dests_for_message, get_route_dests
-from .state import app, update_last_id
+from .service import repost_message
 
 
 def _source_key_for_chat(chat_id: int) -> str:
@@ -57,7 +58,6 @@ async def on_new_message(event):
 
     try:
         await repost_message(event.chat_id, msg, filtered_dests, matched)
-
         await update_last_id(source_key, msg.id)
 
         if app.options.progress_log:
@@ -68,14 +68,5 @@ async def on_new_message(event):
                 if not grouped_id:
                     print(f"[SKIP] chat_id={event.chat_id} msg_id={msg.id} (keyword filter)")
 
-    except FloodWaitError as e:
-        print(f"[RATE LIMIT] FloodWait {e.seconds}s")
-        await asyncio.sleep(e.seconds + 1)
     except Exception as e:
         print(f"[ERR] chat_id={event.chat_id} msg_id={msg.id} -> {e}")
-
-
-async def on_admin_message(event):
-    from .admin import handle_admin_command
-
-    await handle_admin_command(event)

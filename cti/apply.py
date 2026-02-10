@@ -1,14 +1,16 @@
+"""Apply config — resolve entities, build route map, register handlers."""
+
 import asyncio
 import os
 from typing import Any, Dict, List
 
-from telethon import events, utils
-
-from .backfill import backfill_missing_state, catch_up_from_state
-from .handler import on_admin_message, on_new_message
-from .models import AppConfig, ResolvedDest
+from .admin.handler import on_admin_message
+from .core.models import AppConfig, ResolvedDest
+from .infra.client import get_peer_id, resolve_entity_with_fallback, resolve_target
+from .infra.registry import register_admin_handler, register_message_handler, unregister_handlers
+from .repost.backfill import backfill_missing_state, catch_up_from_state
+from .repost.handler import on_new_message
 from .state import app, get_client, load_cve_state, load_json, load_state
-from .telegram import resolve_entity_with_fallback, resolve_target
 
 
 def _format_route(d: ResolvedDest) -> str:
@@ -51,7 +53,7 @@ async def apply_config(cfg: AppConfig) -> None:
         except Exception as e:
             raise ValueError(f"Cannot resolve SOURCE={r.source}: {e}")
 
-        src_key = str(utils.get_peer_id(src_ent))
+        src_key = str(get_peer_id(src_ent))
 
         try:
             dest_ent = await resolve_target(r.dest)
@@ -88,33 +90,9 @@ async def apply_config(cfg: AppConfig) -> None:
     app.source_entities = resolved_sources_map
     app.source_name_map = new_source_name_map
 
-    if app.active_handler_fn and app.active_handler_event:
-        try:
-            client.remove_event_handler(app.active_handler_fn, app.active_handler_event)
-        except Exception:
-            pass
-    if app.active_admin_handler_fn and app.active_admin_handler_event:
-        try:
-            client.remove_event_handler(app.active_admin_handler_fn, app.active_admin_handler_event)
-        except Exception:
-            pass
-
-    watch_chats = list(resolved_sources)
-    if watch_chats:
-        unique_map: Dict[int, Any] = {}
-        for ent in watch_chats:
-            try:
-                key = utils.get_peer_id(ent)
-            except Exception:
-                key = None
-            if key is None:
-                continue
-            unique_map[key] = ent
-        watch_chats = list(unique_map.values())
-
-    app.active_handler_fn = on_new_message
-    app.active_handler_event = events.NewMessage(chats=watch_chats)
-    client.add_event_handler(app.active_handler_fn, app.active_handler_event)
+    # Unregister old handlers and register new ones
+    unregister_handlers(client)
+    register_message_handler(client, resolved_sources, on_new_message)
 
     if options.admin_chat_ids:
         admin_entities = []
@@ -125,16 +103,12 @@ async def apply_config(cfg: AppConfig) -> None:
             except Exception as e:
                 print(f"[WARN] Cannot resolve admin_chat_id={chat_id}: {e}")
 
-        if admin_entities:
-            app.active_admin_handler_fn = on_admin_message
-            app.active_admin_handler_event = events.NewMessage(chats=admin_entities)
-            client.add_event_handler(app.active_admin_handler_fn, app.active_admin_handler_event)
-        else:
-            app.active_admin_handler_fn = None
-            app.active_admin_handler_event = None
+        register_admin_handler(client, admin_entities, on_admin_message)
+
+        if not admin_entities:
+            print("[WARN] admin_chat_ids configured but none resolved")
     else:
-        app.active_admin_handler_fn = None
-        app.active_admin_handler_event = None
+        register_admin_handler(client, [], on_admin_message)
         if options.admin_senders:
             print("[WARN] admin_senders is set but admin_chat_ids is empty; admin commands are disabled.")
 

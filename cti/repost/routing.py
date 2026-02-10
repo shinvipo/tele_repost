@@ -1,9 +1,11 @@
+"""Route lookup — find destinations for a source chat."""
+
 from typing import List
 
+from ..core.models import ResolvedDest
+from ..core.normalize import normalize_channel_id
+from ..state import app
 from .filters import sender_allowed
-from .models import ResolvedDest
-from .normalize import normalize_channel_id
-from .state import app
 
 
 def get_route_dests(chat_id: int) -> List[ResolvedDest]:

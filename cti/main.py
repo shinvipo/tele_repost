@@ -3,11 +3,11 @@ import asyncio
 from telethon import TelegramClient
 
 from .apply import apply_config, watch_config
-from .connection import watch_connection
-from .config import parse_config
-from .constants import CONFIG_PATH, LOG_PATH
+from .core.config import parse_config
+from .core.constants import CONFIG_PATH, LOG_PATH
+from .core.logger import setup_logging
 from .cve.runner import start_cve_monitor
-from .logger import setup_logging
+from .infra.connection import watch_connection
 from .state import app, load_json
 
 

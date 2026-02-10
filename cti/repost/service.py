@@ -1,12 +1,17 @@
+"""Repost service — message reposting and album handling logic.
+
+Uses infra/client.py for Telethon operations (download, send).
+"""
+
 import asyncio
 import tempfile
 from typing import List
 
-from .constants import POST_PREFIX
-from .filters import safe_text
-from .models import ResolvedDest
-from .state import app, get_client
-from .telegram import send_album_to_dests, send_file_to_dests, send_text_to_dests
+from ..core.constants import POST_PREFIX
+from ..core.message import safe_text
+from ..core.models import ResolvedDest
+from ..infra.client import send_album_to_dests, send_file_to_dests, send_text_to_dests
+from ..state import app, get_client
 
 
 async def flush_album_later(chat_id_key: str, grouped_id: int, prefix: str, dests: List[ResolvedDest]):

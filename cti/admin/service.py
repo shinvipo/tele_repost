@@ -1,10 +1,15 @@
+"""Admin service — keyword CRUD business logic.
+
+Pure Python, no Telethon imports. Returns data for handler to send.
+"""
+
 import json
 from typing import List, Optional, Tuple
 
-from .constants import CONFIG_PATH
-from .filters import get_sender_id, safe_text
-from .normalize import normalize_channel_id, normalize_keywords
-from .state import app, get_client, load_json
+from ..core.constants import CONFIG_PATH
+from ..core.message import get_sender_id
+from ..core.normalize import normalize_channel_id, normalize_keywords
+from ..state import app, load_json
 
 
 def _normalize_chat_id(chat_id: Optional[int]) -> Optional[int]:
@@ -36,7 +41,8 @@ def _normalize_chat_ids(chat_ids: List[int]) -> List[int]:
     return uniq
 
 
-def _is_admin_message(event) -> bool:
+def is_admin_message(event) -> bool:
+    """Check if an event is from an authorized admin."""
     opts = app.options
     admin_chats = _normalize_chat_ids(opts.admin_chat_ids)
     sender_id = get_sender_id(event.message)
@@ -58,16 +64,17 @@ def _is_admin_message(event) -> bool:
     return sender_id is not None and sender_id in opts.admin_senders
 
 
-def _parse_keywords_command(text: str) -> Optional[Tuple[str, str]]:
+def parse_keywords_command(text: str) -> Optional[Tuple[str, str]]:
+    """Parse a keywords command from text. Returns (action, args) or None."""
     t = text.strip()
     if not t:
         return None
 
     lower = t.lower()
     if lower.startswith("/keywords"):
-        cmd = t[len("/keywords") :].strip()
+        cmd = t[len("/keywords"):].strip()
     elif lower.startswith("keywords"):
-        cmd = t[len("keywords") :].strip()
+        cmd = t[len("keywords"):].strip()
     else:
         return None
 
@@ -91,22 +98,13 @@ def _parse_keywords_list(args: str) -> List[str]:
     return normalize_keywords(raw)
 
 
-def _write_keywords_to_config(new_keywords: List[str]) -> None:
-    cfg = load_json(CONFIG_PATH)
-    opts = cfg.get("options", {})
-    opts["keywords"] = new_keywords
-    cfg["options"] = opts
-    with open(CONFIG_PATH, "w", encoding="utf-8") as f:
-        json.dump(cfg, f, ensure_ascii=False, indent=2)
-
-
-def _format_keywords(keys: List[str]) -> str:
+def format_keywords(keys: List[str]) -> str:
     if not keys:
         return "(empty)"
     return ", ".join(keys)
 
 
-def _usage() -> str:
+def usage_text() -> str:
     return (
         "Usage:\n"
         "  /keywords show\n"
@@ -117,29 +115,22 @@ def _usage() -> str:
     )
 
 
-async def handle_admin_command(event) -> bool:
-    if not _is_admin_message(event):
-        return False
+def process_keywords_action(
+    action: str, args: str, current: List[str]
+) -> Tuple[Optional[List[str]], str]:
+    """Process a keywords action.
 
-    text = safe_text(event.message)
-    parsed = _parse_keywords_command(text)
-    if not parsed:
-        return False
-
-    action, args = parsed
-    client = get_client()
-
-    current = list(app.options.keywords)
+    Returns (new_keywords, response_text).
+    new_keywords is None if no change needed (help/show).
+    """
     if action in {"set", "add", "remove"} and not args.strip():
-        await client.send_message(event.chat_id, _usage())
-        return True
+        return None, usage_text()
 
     if action in {"show", "list"}:
-        await client.send_message(event.chat_id, f"[KEYWORDS] {_format_keywords(current)}")
-        return True
+        return None, f"[KEYWORDS] {format_keywords(current)}"
+
     if action in {"help", "usage", "?"}:
-        await client.send_message(event.chat_id, _usage())
-        return True
+        return None, usage_text()
 
     if action == "set":
         new_keys = _parse_keywords_list(args)
@@ -155,16 +146,16 @@ async def handle_admin_command(event) -> bool:
     elif action == "clear":
         new_keys = []
     else:
-        await client.send_message(event.chat_id, _usage())
-        return True
+        return None, usage_text()
 
-    _write_keywords_to_config(new_keys)
+    return new_keys, f"[KEYWORDS] {format_keywords(new_keys)}"
 
-    from .apply import apply_config
-    from .config import parse_config
 
-    cfg = parse_config(load_json(CONFIG_PATH))
-    await apply_config(cfg)
-
-    await client.send_message(event.chat_id, f"[KEYWORDS] {_format_keywords(new_keys)}")
-    return True
+def write_keywords_to_config(new_keywords: List[str]) -> None:
+    """Persist updated keywords to config.json."""
+    cfg = load_json(CONFIG_PATH)
+    opts = cfg.get("options", {})
+    opts["keywords"] = new_keywords
+    cfg["options"] = opts
+    with open(CONFIG_PATH, "w", encoding="utf-8") as f:
+        json.dump(cfg, f, ensure_ascii=False, indent=2)

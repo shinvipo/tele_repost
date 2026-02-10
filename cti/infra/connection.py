@@ -1,9 +1,11 @@
+"""Connection watcher — detect disconnect/reconnect and trigger catchup."""
+
 import asyncio
 import time
 from typing import Optional
 
-from .backfill import catch_up_from_state
-from .state import app, get_client
+from ..state import app, get_client
+
 
 POLL_INTERVAL_SECONDS = 2
 
@@ -17,6 +19,8 @@ def _should_catchup(min_offline_minutes: Optional[int], offline_seconds: float) 
 
 
 async def _run_catchup(reason: str) -> bool:
+    from ..repost.backfill import catch_up_from_state
+
     if app.catchup_lock.locked():
         print(f"[INFO] Catch-up skipped ({reason}, already running)")
         return False

@@ -1,13 +1,24 @@
+"""Telethon infrastructure layer — entity resolution, send helpers, retry logic.
+
+This is the ONLY place outside of main.py that should import Telethon directly.
+"""
+
 import asyncio
 from typing import Any, List, Optional
 
+from telethon import utils
 from telethon.errors import FloodWaitError, RPCError
 from telethon.errors.rpcerrorlist import SlowModeWaitError
 from telethon.tl.types import PeerUser
 
-from .models import ResolvedDest, TargetType
-from .normalize import normalize_channel_id
-from .state import app, get_client
+from ..core.models import ResolvedDest, TargetType
+from ..core.normalize import normalize_channel_id
+from ..state import app, get_client
+
+
+def get_peer_id(entity) -> int:
+    """Extract peer ID from a Telethon entity."""
+    return utils.get_peer_id(entity)
 
 
 async def resolve_target(target: TargetType):

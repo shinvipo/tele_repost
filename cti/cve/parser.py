@@ -53,6 +53,7 @@ class CVEParser:
             "scope": cvss["scope"],
             "affected_products": affected,
             "weaknesses": weaknesses if weaknesses else ["unknown"],
+            "reserved_date": metadata.get("dateReserved", ""),
             "published_date": metadata.get("datePublished", ""),
             "last_modified_date": metadata.get("dateUpdated", ""),
             "references": references,

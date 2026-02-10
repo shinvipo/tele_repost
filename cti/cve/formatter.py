@@ -46,8 +46,10 @@ class TelegramFormatter:
         parts.append("")
 
         # Dates
+        res = self._format_date(cve.get("reserved_date", ""))
         pub = self._format_date(cve.get("published_date", ""))
         upd = self._format_date(cve.get("last_modified_date", ""))
+        parts.append(f"📅 Reserved:  <code>{res}</code>")
         parts.append(f"📅 Published: <code>{pub}</code>")
         parts.append(f"📅 Updated:   <code>{upd}</code>")
         if cve.get("assigner"):

@@ -1,8 +1,11 @@
+from __future__ import annotations
+
 import asyncio
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 
-from telethon import TelegramClient
+if TYPE_CHECKING:
+    from telethon import TelegramClient
 
 TargetType = Union[str, int]
 
