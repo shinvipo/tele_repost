@@ -21,6 +21,7 @@
     "keywords": [],
     "admin_chat_ids": [],
     "admin_senders": [],
+    "gap_trigger_threshold": 1,
     "catchup_min_offline_minutes": null,
     "max_send_retries": 3,
     "retry_base_seconds": 1.5,

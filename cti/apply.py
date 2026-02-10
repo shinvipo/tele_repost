@@ -153,6 +153,7 @@ async def apply_config(cfg: AppConfig) -> None:
     print(f"allowed_senders   : {options.allowed_senders}")
     print(f"admin_chat_ids    : {options.admin_chat_ids}")
     print(f"admin_senders     : {options.admin_senders}")
+    print(f"gap_trigger_threshold : {options.gap_trigger_threshold}")
     print(f"catchup_min_offline_minutes : {options.catchup_min_offline_minutes}")
     print(f"max_send_retries  : {options.max_send_retries}")
     print(f"retry_base_sec    : {options.retry_base_seconds}")

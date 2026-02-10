@@ -134,3 +134,21 @@ def normalize_optional_int(raw: Any) -> Optional[int]:
     if s.lstrip("-").isdigit():
         return int(s)
     raise ValueError("catchup_min_offline_minutes must be a number")
+
+
+def normalize_non_negative_int(raw: Any, default: int, field_name: str) -> int:
+    if raw is None:
+        return default
+    if isinstance(raw, (int, float)):
+        value = int(raw)
+    else:
+        s = str(raw).strip()
+        if not s:
+            return default
+        if not s.lstrip("-").isdigit():
+            raise ValueError(f"{field_name} must be a number")
+        value = int(s)
+
+    if value < 0:
+        raise ValueError(f"{field_name} must be >= 0")
+    return value

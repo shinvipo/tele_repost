@@ -3,6 +3,7 @@ from typing import Any, Dict, List
 from .models import AppConfig, MonitorConfig, OptionsConfig, RouteConfig, TelegramConfig
 from .normalize import (
     normalize_keywords,
+    normalize_non_negative_int,
     normalize_optional_int,
     normalize_sender_ids,
     parse_chat_ids,
@@ -95,6 +96,9 @@ def parse_config(cfg: Dict[str, Any]) -> AppConfig:
             opts.get("admin_chat_ids", opts.get("admin_chat_id"))
         ),
         admin_senders=normalize_sender_ids(opts.get("admin_senders", [])),
+        gap_trigger_threshold=normalize_non_negative_int(
+            opts.get("gap_trigger_threshold"), default=1, field_name="gap_trigger_threshold"
+        ),
         catchup_min_offline_minutes=normalize_optional_int(
             opts.get("catchup_min_offline_minutes")
         ),
