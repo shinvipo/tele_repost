@@ -38,7 +38,8 @@ async def backfill_missing_state() -> None:
             continue
 
         name = app.source_name_map.get(src_key, src_key)
-        print(f"[BACKFILL] source={name} id={src_key} limit={BACKFILL_LIMIT}")
+        if app.options.progress_log:
+            print(f"[REPOST] [BACKFILL] source={name} id={src_key} limit={BACKFILL_LIMIT}")
 
         sent = 0
         chat_id = get_peer_id(src_ent)
@@ -64,7 +65,8 @@ async def backfill_missing_state() -> None:
         current = int(app.state.get(src_key, 0))
         new_last = max(current, max_id)
         await update_last_id(src_key, new_last)
-        print(f"[BACKFILL] done source={name} seen={seen} sent={sent} last_id={new_last}")
+        if app.options.progress_log:
+            print(f"[REPOST] [BACKFILL] done source={name} seen={seen} sent={sent} last_id={new_last}")
 
 async def catch_up_source_from_state(
     src_key: str,
@@ -74,7 +76,8 @@ async def catch_up_source_from_state(
     client = get_client()
     source_ent = src_ent or app.source_entities.get(src_key)
     if source_ent is None:
-        print(f"[CATCHUP] skip source id={src_key} reason=source_not_found")
+        if app.options.progress_log:
+            print(f"[REPOST] [CATCHUP] skip source id={src_key} reason=source_not_found")
         return None
 
     dests = app.route_map.get(src_key, [])
@@ -83,7 +86,8 @@ async def catch_up_source_from_state(
 
     lock = _get_source_lock(src_key)
     if lock.locked():
-        print(f"[CATCHUP] skip source id={src_key} reason={reason or 'busy'} (already_running)")
+        if app.options.progress_log:
+            print(f"[REPOST] [CATCHUP] skip source id={src_key} reason={reason or 'busy'} (already_running)")
         return None
 
     async with lock:
@@ -93,7 +97,8 @@ async def catch_up_source_from_state(
 
         name = app.source_name_map.get(src_key, src_key)
         reason_suffix = f" reason={reason}" if reason else ""
-        print(f"[CATCHUP] source={name} id={src_key} from_id={last_id}{reason_suffix}")
+        if app.options.progress_log:
+            print(f"[REPOST] [CATCHUP] source={name} id={src_key} from_id={last_id}{reason_suffix}")
         try:
             chat_id = get_peer_id(source_ent)
             max_id = last_id
@@ -125,10 +130,12 @@ async def catch_up_source_from_state(
 
             if max_id > last_id:
                 await update_last_id(src_key, max_id)
-            print(f"[CATCHUP] done source={name} seen={seen} sent={sent} last_id={max_id}")
+            if app.options.progress_log:
+                print(f"[REPOST] [CATCHUP] done source={name} seen={seen} sent={sent} last_id={max_id}")
             return True
         except Exception as e:
-            print(f"[CATCHUP] fail source={name} id={src_key} reason={e}")
+            if app.options.progress_log:
+                print(f"[REPOST] [CATCHUP] fail source={name} id={src_key} reason={e}")
             return False
 
 
@@ -157,6 +164,6 @@ async def catch_up_from_state():
             skipped_sources += 1
 
     print(
-        f"[CATCHUP] summary eligible_sources={total_sources} "
+        f"[REPOST] [CATCHUP] summary eligible_sources={total_sources} "
         f"succeeded={succeeded_sources} failed={failed_sources} skipped={skipped_sources}"
     )

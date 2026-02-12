@@ -3,6 +3,7 @@ CISA KEV Lookup — Download and cache Known Exploited Vulnerabilities catalog.
 """
 
 import json
+import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -26,28 +27,32 @@ class KEVLookup:
     def _load(self):
         """Load KEV catalog from cache or download fresh."""
         if self._cache_file.exists():
-            age = datetime.now(timezone.utc) - datetime.fromtimestamp(
-                self._cache_file.stat().st_mtime, tz=timezone.utc
-            )
-            if age < timedelta(hours=self._cache_ttl_hours):
-                print(f"[CVE Monitor] Loading KEV catalog from cache ({self._cache_file.name})")
-                data = json.loads(self._cache_file.read_text(encoding="utf-8"))
-                self._index(data)
-                return
+            # Check TTL
+            mtime = self._cache_file.stat().st_mtime
+            age_hours = (time.time() - mtime) / 3600
+            if age_hours < self._cache_ttl_hours:
+                print(f"[CVE] [INFO] Loading KEV catalog from cache ({self._cache_file.name})")
+                try:
+                    with open(self._cache_file, "r", encoding="utf-8") as f:
+                        data = json.load(f)
+                        self._process_catalog(data)
+                        return
+                except Exception:
+                    pass  # Fallback to download
 
-        print("[CVE Monitor] Downloading CISA KEV catalog...")
+        print("[CVE] [INFO] Downloading CISA KEV catalog...")
         try:
             resp = requests.get(KEV_URL, timeout=30)
             resp.raise_for_status()
             data = resp.json()
             self._cache_file.parent.mkdir(parents=True, exist_ok=True)
             self._cache_file.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
-            self._index(data)
-            print(f"[CVE Monitor] KEV catalog loaded: {len(self._catalog)} entries")
+            self._process_catalog(data)
+            print(f"[CVE] [INFO] KEV catalog loaded: {len(self._catalog)} entries")
         except Exception as e:
-            print(f"[WARN] Failed to load KEV catalog: {e}")
+            print(f"[CVE] [WARN] Failed to load KEV catalog: {e}")
 
-    def _index(self, data: dict):
+    def _process_catalog(self, data: dict):
         for vuln in data.get("vulnerabilities", []):
             cve_id = vuln.get("cveID", "")
             if cve_id:

@@ -60,6 +60,7 @@ class CveMonitorConfig:
     kev_enabled: bool = True
     kev_cache_file: str = "data/cve_kev_cache.json"
     kev_cache_ttl_hours: int = 24
+    min_cvss: float = 0.0
 
 
 @dataclass

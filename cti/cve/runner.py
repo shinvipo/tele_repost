@@ -16,25 +16,27 @@ from .monitor import DeltaMonitor
 from .parser import CVEParser
 
 
-def _matches_keywords(cve_data: dict, keywords: list[str]) -> bool:
+
+def _matches_keywords(cve_data: dict, keywords: list[str]) -> str | None:
     """Check if a CVE matches any of the configured keywords (case-insensitive).
 
-    Searches in: title, description, affected vendor names, product names, package names.
+    Searches in: affected vendor names, product names, package names.
+    Returns: The matched keyword (str) or None if no match.
     """
     if not keywords:
-        return True  # No keywords = accept all
+        return ""  # No keywords = accept all
 
-    text_parts = [
-        cve_data.get("title", ""),
-        cve_data.get("description", ""),
-    ]
+    text_parts = []
     for prod in cve_data.get("affected_products", []):
         text_parts.append(prod.get("vendor", ""))
         text_parts.append(prod.get("product", ""))
         text_parts.append(prod.get("package_name", ""))
 
     combined = " ".join(text_parts).lower()
-    return any(kw in combined for kw in keywords)
+    for kw in keywords:
+        if kw in combined:
+            return kw
+    return None
 
 
 async def _send_cve_message(client, dest_entity, topic_id: int | None, message: str,
@@ -70,7 +72,7 @@ async def _process_delta(
         return 0
 
     total = len(new_entries) + len(updated_entries)
-    print(f"[CVE Monitor] Processing {total} CVEs ({len(new_entries)} new, {len(updated_entries)} updated)")
+    print(f"[CVE] [INFO] Processing {total} CVEs ({len(new_entries)} new, {len(updated_entries)} updated)")
 
     processed_ids = []
 
@@ -109,21 +111,42 @@ async def _process_one(
     github_link = entry.get("githubLink", "")
 
     if not github_link:
-        print(f"[WARN] No githubLink for {cve_id}, skipping")
+        print(f"[CVE] [WARN] No githubLink for {cve_id}, skipping")
         return
 
     # Download full CVE JSON (run in executor to not block event loop)
     loop = asyncio.get_event_loop()
     raw = await loop.run_in_executor(None, monitor.fetch_cve_json, github_link)
     if not raw:
+        print(f"[CVE] [ERR] Failed to fetch JSON for {cve_id}")
         return
 
     # Parse
     cve_data = parser.parse(raw)
 
-    # Keyword filtering
-    if not _matches_keywords(cve_data, config.keywords):
+    # CVSS filtering
+    cvss_score = cve_data.get("cvss_score")
+    if cvss_score is not None and float(cvss_score) < config.min_cvss:
+        print(f"[CVE] [INFO] Skipped {cve_id} (cvss={cvss_score} < min={config.min_cvss})")
         return
+    # If cvss_score is None, we assume it passes (or treat as 0? Let's treat as pass if not set, or fail?
+    # Usually if not set, we might want to see it. But if user sets min_cvss=7, they probably want HIGH.
+    # If None, it might be critical or unassigned. Let's allow None.
+    # Wait, if user sets min_cvss=9, and score is None, should we alert?
+    # Safe default: if min_cvss > 0 and score is None, maybe skip?
+    # Let's keep strict: if score is None, treat as 0.
+    if config.min_cvss > 0 and cvss_score is None:
+         print(f"[CVE] [INFO] Skipped {cve_id} (cvss=None < min={config.min_cvss})")
+         return
+
+    # Keyword filtering
+    match_kw = _matches_keywords(cve_data, config.keywords)
+    if match_kw is None:
+        print(f"[CVE] [INFO] Skipped {cve_id} (no keyword match)")
+        return
+    
+    match_info = f"keyword: '{match_kw}'" if match_kw else "keywords=ALL"
+    print(f"[CVE] [INFO] Matched {cve_id} ({match_info}, cvss={cvss_score})")
 
     # KEV lookup
     kev_entry = kev.lookup(cve_id)
@@ -143,13 +166,13 @@ async def start_cve_monitor(config: CveMonitorConfig, client) -> None:
         config: CveMonitorConfig with all settings.
         client: Telethon TelegramClient (already connected).
     """
-    print("[CVE Monitor] Initializing...")
+    print("[CVE] [INFO] Initializing...")
 
     # Resolve destination entity
     try:
         dest_entity = await resolve_target(config.dest)
     except Exception as e:
-        print(f"[ERR] CVE Monitor: cannot resolve dest={config.dest}: {e}")
+        print(f"[CVE] [ERR] Cannot resolve dest={config.dest}: {e}")
         return
 
     # Initialize components (KEV downloads synchronously on init, run in executor)
@@ -172,7 +195,7 @@ async def start_cve_monitor(config: CveMonitorConfig, client) -> None:
 
     keywords_info = f", keywords={config.keywords}" if config.keywords else ", keywords=ALL"
     print(
-        f"[CVE Monitor] Started. Polling every {config.interval_seconds}s, "
+        f"[CVE] [INFO] Started. Polling every {config.interval_seconds}s, "
         f"dest={config.dest}, topic_id={config.topic_id}"
         f"{keywords_info}"
     )
@@ -187,8 +210,8 @@ async def start_cve_monitor(config: CveMonitorConfig, client) -> None:
                     client, dest_entity, config,
                 )
                 if count:
-                    print(f"[CVE Monitor] Processed {count} CVEs in this cycle")
+                    print(f"[CVE] [INFO] Processed {count} CVEs in this cycle")
         except Exception as e:
-            print(f"[ERR] CVE Monitor cycle error: {e}")
+            print(f"[CVE] [ERR] Cycle error: {e}")
 
         await asyncio.sleep(config.interval_seconds)

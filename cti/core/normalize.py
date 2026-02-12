@@ -104,7 +104,7 @@ def normalize_non_negative_int(raw: Any, default: int = 0, field_name: str = "")
         return max(0, val)
     except (ValueError, TypeError):
         if field_name:
-            print(f"[WARN] Invalid {field_name}={raw}, using default={default}")
+            print(f"[CORE] [WARN] Invalid {field_name}={raw}, using default={default}")
         return default
 
 

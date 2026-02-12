@@ -119,6 +119,7 @@ def parse_config(cfg: Dict[str, Any]) -> AppConfig:
             kev_enabled=bool(cve_raw.get("kev_enabled", True)),
             kev_cache_file=str(cve_raw.get("kev_cache_file", "data/cve_kev_cache.json")),
             kev_cache_ttl_hours=int(cve_raw.get("kev_cache_ttl_hours", 24)),
+            min_cvss=float(cve_raw.get("min_cvss", 0.0)),
         )
 
     return AppConfig(telegram=telegram, monitor=monitor, options=options, cve_monitor=cve_monitor)

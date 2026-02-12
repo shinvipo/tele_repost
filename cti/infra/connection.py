@@ -19,21 +19,26 @@ def _should_catchup(min_offline_minutes: Optional[int], offline_seconds: float) 
 
 
 async def _run_catchup(reason: str) -> bool:
-    from ..repost.backfill import catch_up_from_state
+    from ..repost import lazy_backfill
+    import traceback
 
-    if app.catchup_lock.locked():
-        print(f"[INFO] Catch-up skipped ({reason}, already running)")
-        return False
+    async with app.catchup_lock:
+        if app.catchup_running:
+            print(f"[INFRA] [INFO] Catch-up skipped ({reason}, already running)")
+            return False
 
-    try:
-        print(f"[INFO] Catch-up triggered ({reason})")
-        async with app.catchup_lock:
-            await catch_up_from_state()
-        print(f"[INFO] Catch-up finished ({reason})")
-        return True
-    except Exception as e:
-        print(f"[WARN] Catch-up failed ({reason}): {e}")
-        return False
+        app.catchup_running = True
+        print(f"[INFRA] [INFO] Catch-up triggered ({reason})")
+        try:
+            await lazy_backfill.catch_up_from_state()
+            print(f"[INFRA] [INFO] Catch-up finished ({reason})")
+            return True
+        except Exception as e:
+            print(f"[INFRA] [WARN] Catch-up failed ({reason}): {e}")
+            traceback.print_exc()
+            return False
+        finally:
+            app.catchup_running = False
 
 
 async def watch_connection():
@@ -53,16 +58,16 @@ async def watch_connection():
                 offline_seconds = now - last_disconnect
                 min_offline = app.options.catchup_min_offline_minutes
                 print(
-                    f"[INFO] Reconnected after {offline_seconds:.1f}s (min_offline_minutes={min_offline})"
+                    f"[INFRA] [INFO] Reconnected after {offline_seconds:.1f}s (min_offline_minutes={min_offline})"
                 )
                 if _should_catchup(min_offline, offline_seconds):
                     await _run_catchup("reconnect")
                 else:
-                    print("[INFO] Catch-up skipped (offline too short)")
+                    print("[INFRA] [INFO] Catch-up skipped (offline too short)")
             last_disconnect = None
         elif not connected and was_connected:
             last_disconnect = now
-            print("[WARN] Disconnected from Telegram")
+            print("[INFRA] [WARN] Disconnected from Telegram")
 
         was_connected = connected
         await asyncio.sleep(POLL_INTERVAL_SECONDS)

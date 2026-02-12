@@ -31,7 +31,7 @@ async def on_new_message(event):
     if gap_threshold > 0 and last_id > 0 and msg.id > (last_id + gap_threshold):
         gap = msg.id - last_id
         print(
-            f"[GAP] chat_id={event.chat_id} source_key={source_key} "
+            f"[REPOST] [GAP] chat_id={event.chat_id} source_key={source_key} "
             f"last_id={last_id} incoming_id={msg.id} gap={gap} threshold={gap_threshold}"
         )
         await catch_up_source_from_state(source_key, reason=f"gap_detected gap={gap}")
@@ -40,33 +40,37 @@ async def on_new_message(event):
     if msg.id <= last_id:
         return
 
-    dests = get_route_dests(event.chat_id)
+    # 1. Check if allowed source/route
+    dests = get_route_dests(msg)
     if not dests:
-        await update_last_id(source_key, msg.id)
-        if app.options.progress_log:
-            print(f"[SKIP] chat_id={event.chat_id} msg_id={msg.id} (no route)")
+        # print(f"[REPOST] [SKIP] chat_id={event.chat_id} msg_id={msg.id} (no route)") # noisy
         return
 
-    filtered_dests = filter_dests_for_message(msg, dests)
-    if not filtered_dests:
-        await update_last_id(source_key, msg.id)
-        if app.options.progress_log:
-            print(f"[SKIP] chat_id={event.chat_id} msg_id={msg.id} (sender filter)")
+    # 2. Check if allowed sender (for that specific route) -> handled inside routing or here?
+    # Actually routing returns dests, but we might filter by sender if specified in route.
+    # The current routing logic includes basic sender filtering if `allowed_senders` defined.
+    # But let's verify if `should_repost_message` filters globally too.
+    if not should_repost_message(msg, app.options):
+        print(f"[REPOST] [SKIP] chat_id={event.chat_id} msg_id={msg.id} (sender filter)")
         return
 
-    matched = should_repost_message(msg)
-
+    # 3. Process
     try:
-        await repost_message(event.chat_id, msg, filtered_dests, matched)
-        await update_last_id(source_key, msg.id)
-
-        if app.options.progress_log:
-            if matched:
-                print(f"[OK] chat_id={event.chat_id} msg_id={msg.id}")
-            else:
-                grouped_id = getattr(msg, "grouped_id", None)
-                if not grouped_id:
-                    print(f"[SKIP] chat_id={event.chat_id} msg_id={msg.id} (keyword filter)")
+        # Repost
+        sent_messages = await repost_message(msg, dests, event.client) # Assuming event.client is the client
+        if sent_messages:
+            if app.options.progress_log:
+                print(f"[REPOST] [OK] chat_id={event.chat_id} msg_id={msg.id}")
+            # Update state
+            src_key = str(event.chat_id) # Using event.chat_id directly as source_key is already normalized
+            await update_last_id(src_key, msg.id)
+        else:
+            # Filtered by keyword or album incomplete
+            if app.options.progress_log:
+               # If it was returned empty but not error, usually filtered
+                print(f"[REPOST] [SKIP] chat_id={event.chat_id} msg_id={msg.id} (keyword filter)")
 
     except Exception as e:
-        print(f"[ERR] chat_id={event.chat_id} msg_id={msg.id} -> {e}")
+        print(f"[REPOST] [ERR] chat_id={event.chat_id} msg_id={msg.id} -> {e}")
+        import traceback
+        traceback.print_exc()

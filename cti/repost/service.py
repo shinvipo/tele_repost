@@ -27,7 +27,7 @@ async def flush_album_later(chat_id_key: str, grouped_id: int, prefix: str, dest
 
     if not matched:
         if options.progress_log:
-            print(f"[SKIP] chat_id={chat_id_key} grouped_id={grouped_id} (keyword filter)")
+            print(f"[REPOST] [SKIP] chat_id={chat_id_key} grouped_id={grouped_id} (keyword filter)")
         return
 
     msgs.sort(key=lambda m: m.id)

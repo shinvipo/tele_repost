@@ -146,29 +146,35 @@ async def send_album_to_dests(dests: List[ResolvedDest], file_paths: List[str], 
 
 async def send_with_retry(raw_dest, send_coro_factory):
     options = app.options
-    for attempt in range(options.max_send_retries + 1):
+    max_retries = options.max_send_retries + 1
+    for attempt in range(max_retries):
         try:
             await send_coro_factory()
             return
         except FloodWaitError as e:
-            wait_s = int(e.seconds) + 1
-            print(f"[RATE LIMIT] FloodWait {wait_s}s for DEST={raw_dest}")
+            wait_s = e.seconds + 1
+            print(f"[INFRA] [RATE LIMIT] FloodWait {wait_s}s for DEST={raw_dest}")
             await asyncio.sleep(wait_s)
         except SlowModeWaitError as e:
-            wait_s = int(getattr(e, "seconds", 0)) + 1
-            print(f"[RATE LIMIT] SlowMode {wait_s}s for DEST={raw_dest}")
+            wait_s = getattr(e, "seconds", 0) + 1
+            print(f"[INFRA] [RATE LIMIT] SlowMode {wait_s}s for DEST={raw_dest}")
             await asyncio.sleep(max(1, wait_s))
         except RPCError as e:
             msg = str(e).lower()
             if "too many requests" in msg:
-                wait_s = options.retry_base_seconds * (2 ** attempt)
-                print(f"[RATE LIMIT] Too many requests; backoff {wait_s:.1f}s for DEST={raw_dest}")
-                await asyncio.sleep(wait_s)
-                continue
+                wait_s = app.options.retry_base_seconds * (2**attempt)
+                if attempt < max_retries - 1:
+                    print(f"[INFRA] [RATE LIMIT] Too many requests; backoff {wait_s:.1f}s for DEST={raw_dest}")
+                    await asyncio.sleep(wait_s)
+                    continue
+                else:
+                    print(f"[INFRA] [WARN] send failed to DEST={raw_dest}: {e}")
+                    raise e
             if options.progress_log:
-                print(f"[WARN] send failed to DEST={raw_dest}: {e}")
-            return
+                print(f"[INFRA] [WARN] send failed to DEST={raw_dest}: {e}")
+            raise e
         except Exception as e:
-            if options.progress_log:
-                print(f"[WARN] send failed to DEST={raw_dest}: {e}")
-            return
+            # Non-retryable
+            print(f"[INFRA] [WARN] send failed to DEST={raw_dest}: {e}")
+            raise e
+

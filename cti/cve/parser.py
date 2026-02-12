@@ -113,9 +113,20 @@ class CVEParser:
         """Extract and normalize affected products and versions."""
         results = []
         for entry in affected_list:
-            vendor = entry.get("vendor", "unknown")
-            product = entry.get("product", "unknown")
             package = entry.get("packageName", "")
+            vendor = entry.get("vendor", "")
+            product = entry.get("product", "")
+            
+            # Edge case: only packageName, no vendor/product
+            # Use packageName as both vendor and product
+            if not vendor and not product and package:
+                vendor = package
+                product = package
+            elif not vendor:
+                vendor = "unknown"
+            elif not product:
+                product = "unknown"
+            
             default_status = entry.get("defaultStatus", "")
 
             versions = []

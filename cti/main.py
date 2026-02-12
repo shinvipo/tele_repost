@@ -26,9 +26,9 @@ async def main():
         if cfg.cve_monitor and cfg.cve_monitor.enabled:
             asyncio.create_task(start_cve_monitor(cfg.cve_monitor, client))
         else:
-            print("[INFO] CVE Monitor is disabled")
+            print("[CORE] [INFO] CVE Monitor is disabled")
 
-        print("[OK] Monitoring... (Ctrl+C to stop)")
+        print("[CORE] [OK] Monitoring... (Ctrl+C to stop)")
         await client.run_until_disconnected()
 
 

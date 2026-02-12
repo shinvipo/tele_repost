@@ -27,18 +27,18 @@ class DeltaMonitor:
             resp.raise_for_status()
             return resp.json()
         except Exception as e:
-            print(f"[ERR] Failed to fetch delta.json: {e}")
+            print(f"[CVE] [ERR] Failed to fetch delta.json: {e}")
             return None
 
     def fetch_delta_log(self) -> list | None:
         """Fetch deltaLog.json for catchup after downtime."""
         try:
-            print("[CVE Monitor] Fetching deltaLog.json for catchup...")
+            print("[CVE] [INFO] Fetching deltaLog.json for catchup...")
             resp = requests.get(DELTA_LOG_URL, timeout=60)
             resp.raise_for_status()
             return resp.json()
         except Exception as e:
-            print(f"[ERR] Failed to fetch deltaLog.json: {e}")
+            print(f"[CVE] [ERR] Failed to fetch deltaLog.json: {e}")
             return None
 
     def get_new_entries(self, delta: dict) -> tuple[list[dict], list[dict]]:
@@ -76,7 +76,7 @@ class DeltaMonitor:
         """
         last_time = self._state.get("last_fetch_time")
         if last_time is None:
-            print("[CVE Monitor] First run — processing only the latest delta")
+            print("[CVE] [INFO] First run — processing only the latest delta")
             return []
 
         delta_log = self.fetch_delta_log()
@@ -93,7 +93,7 @@ class DeltaMonitor:
                 break  # Already processed and older
 
         missed.reverse()  # Process oldest first
-        print(f"[CVE Monitor] Catchup: {len(missed)} missed delta snapshots since {last_time}")
+        print(f"[CVE] [INFO] Catchup: {len(missed)} missed delta snapshots since {last_time}")
         return missed
 
     def fetch_cve_json(self, github_link: str) -> dict | None:
@@ -103,5 +103,5 @@ class DeltaMonitor:
             resp.raise_for_status()
             return resp.json()
         except Exception as e:
-            print(f"[ERR] Failed to fetch CVE JSON from {github_link}: {e}")
+            print(f"[CVE] [ERR] Failed to fetch CVE JSON from {github_link}: {e}")
             return None

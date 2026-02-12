@@ -58,7 +58,7 @@ async def apply_config(cfg: AppConfig) -> None:
         try:
             dest_ent = await resolve_target(r.dest)
         except Exception as e:
-            print(f"[WARN] Skip ROUTE dest={r.dest} (cannot resolve): {e}")
+            print(f"[CORE] [WARN] Skip ROUTE dest={r.dest} (cannot resolve): {e}")
             continue
 
         if src_key not in resolved_sources_map:
@@ -101,19 +101,19 @@ async def apply_config(cfg: AppConfig) -> None:
                 admin_ent = await resolve_entity_with_fallback(chat_id)
                 admin_entities.append(admin_ent)
             except Exception as e:
-                print(f"[WARN] Cannot resolve admin_chat_id={chat_id}: {e}")
+                print(f"[CORE] [WARN] Cannot resolve admin_chat_id={chat_id}: {e}")
 
         register_admin_handler(client, admin_entities, on_admin_message)
 
         if not admin_entities:
-            print("[WARN] admin_chat_ids configured but none resolved")
+            print("[CORE] [WARN] admin_chat_ids configured but none resolved")
     else:
         register_admin_handler(client, [], on_admin_message)
         if options.admin_senders:
-            print("[WARN] admin_senders is set but admin_chat_ids is empty; admin commands are disabled.")
+            print("[CORE] [WARN] admin_senders is set but admin_chat_ids is empty; admin commands are disabled.")
 
     print("====================================")
-    print("[OK] Config applied")
+    print("[CORE] [OK] Config applied")
     print(f"SOURCES(resolved) : {list(app.source_name_map.items())}")
     print("ROUTES(resolved)  :")
     for src_key, dests in app.route_map.items():
@@ -151,13 +151,13 @@ async def watch_config(config_path: str, parse_config_fn, apply_config_fn) -> No
 
                 if mtime != last_mtime:
                     last_mtime = mtime
-                    print("[INFO] config/config.json changed -> reloading ...")
+                    print("[CORE] [INFO] config/config.json changed -> reloading ...")
                     try:
                         cfg = parse_config_fn(load_json(config_path))
                         await apply_config_fn(cfg)
                     except Exception as e:
-                        print(f"[WARN] Reload failed, keep previous config. Reason: {e}")
+                        print(f"[CORE] [WARN] Reload failed, keep previous config. Reason: {e}")
         except Exception as e:
-            print(f"[WARN] watch_config error: {e}")
+            print(f"[CORE] [WARN] watch_config error: {e}")
 
         await asyncio.sleep(max(1.0, app.options.reload_interval_seconds))
